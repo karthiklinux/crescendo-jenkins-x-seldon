@@ -1,0 +1,40 @@
+pipeline {
+  agent {
+    kubernetes {
+      defaultContainer 'core-builder'
+      yamlFile 'models/news_classifier/podTemplate.yaml'
+    }
+  }
+
+  stages {
+    stage('Test') {
+      steps {
+        sh '''
+          cd models/news_classifier
+          make install_dev test
+        '''
+      }
+    }
+
+    stage('Test integration') {
+      steps {
+        sh '''
+          cd models/news_classifier
+          ./integration/kind_test_all.sh
+        '''
+      }
+    }
+
+    stage('Promote application') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-karthik', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+          sh '''
+            cd models/news_classifier
+            ./promote_application.sh
+          '''
+        }
+      }
+    }
+
+  }
+}
